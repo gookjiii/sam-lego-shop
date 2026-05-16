@@ -1,0 +1,33 @@
+{
+  "name": "lego-shop-app",
+  "mode": "vendored",
+  "dependencies": {
+    "monkilabs/opencastle": {
+      "version": "18c6f2cf4e5cada72a9175473a9a8e1c46487751",
+      "source": "https://github.com/monkilabs/opencastle",
+      "include": {
+        "skills": [
+          "figma-design"
+        ]
+      }
+    },
+    "OpenRoster-ai/awesome-agents": {
+      "version": "010799b3cf0ae350d91f795a75ba6f2759817922",
+      "source": "https://github.com/OpenRoster-ai/awesome-agents",
+      "include": {
+        "skills": [
+          "ui-designer"
+        ]
+      }
+    },
+    "RevenueCat/rc-claude-code-plugin": {
+      "version": "407e4651ff74dbaf47c457948ab540e620403c2a",
+      "source": "https://github.com/RevenueCat/rc-claude-code-plugin",
+      "include": {
+        "skills": [
+          "revenuecat-purchase-flow"
+        ]
+      }
+    }
+  }
+}

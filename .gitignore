@@ -1,0 +1,33 @@
+# Java
+backend/target/
+*.class
+
+# Node
+frontend/node_modules/
+frontend/dist/
+
+# Secrets
+*.json
+!frontend/package.json
+!frontend/package-lock.json
+!tessl.json
+!.mcp.json
+
+# IDEs
+.vscode/
+.idea/
+.DS_Store
+
+# Agent folders
+.agent/
+.claude/
+.codebuddy/
+.codex/
+.continue/
+.cursor/
+.kiro/
+.opencode/
+.qoder/
+.roo/
+.trae/
+.windsurf/

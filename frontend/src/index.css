@@ -1,0 +1,58 @@
+@import url('https://fonts.googleapis.com/css2?family=Be+Vietnam+Pro:wght@400;500;600;700;800;900&family=Inter:wght@300;400;500;600;700&display=swap');
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+:root {
+  font-family: 'Inter', system-ui, sans-serif;
+  line-height: 1.5;
+  font-weight: 400;
+  color-scheme: light;
+  color: #475569;
+  background-color: #FFF0BE;
+}
+
+h1, h2, h3, h4, h5, h6 {
+  font-family: 'Be Vietnam Pro', sans-serif;
+  color: #1E293B;
+}
+
+body {
+  margin: 0;
+  min-width: 320px;
+  min-height: 100vh;
+  background-color: #FFF0BE;
+  color: #475569;
+}
+
+/* Claymorphism Utilities */
+.clay-card {
+  @apply bg-white rounded-clay shadow-clay-md border-2 border-white transition-all duration-300;
+}
+
+.clay-btn {
+  @apply bg-pastel-pink text-text-main font-heading font-bold tracking-wide px-6 py-3 rounded-clay shadow-clay-sm hover:shadow-clay-md hover:bg-hot-pink hover:text-white transition-all duration-200 active:scale-95 cursor-pointer;
+}
+
+/* Redefining legacy neo classes to match new theme for compatibility */
+.neo-border {
+  @apply rounded-clay border-2 border-white/50;
+}
+
+.neo-shadow {
+  @apply shadow-clay-sm transition-all duration-200;
+}
+
+.neo-button {
+  @apply clay-btn;
+}
+
+/* Custom scrollbar hiding */
+.no-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+.no-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
