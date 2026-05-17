@@ -44,16 +44,17 @@ const Checkout = ({ onBack, onOrderSuccess }) => {
   };
 
   const handlePlaceOrder = async () => {
-    if (!shippingInfo.fullName || !shippingInfo.phone || !shippingInfo.address) {
-      alert("Vui lòng điền đầy đủ thông tin giao hàng!");
+    if (!shippingInfo.fullName || !shippingInfo.phone) {
+      alert("Vui lòng điền họ tên và số điện thoại!");
       return;
     }
 
     setLoading(true);
     try {
+      const addressString = shippingInfo.address ? ` | ${shippingInfo.address}` : '';
       const orderData = {
         totalAmount: cartTotal,
-        shippingAddress: `${shippingInfo.fullName} | ${shippingInfo.phone} | ${shippingInfo.address}`,
+        shippingAddress: `${shippingInfo.fullName} | ${shippingInfo.phone}${addressString}`,
         paymentMethod: paymentMethod,
         items: cartItems.map(item => ({
           product: { id: item.id },
@@ -178,7 +179,7 @@ const Checkout = ({ onBack, onOrderSuccess }) => {
                 <div className="relative">
                   <MapPin className="absolute left-5 top-6 text-pastel-pink" size={20} strokeWidth={2} />
                   <textarea 
-                    placeholder="Địa chỉ nhận hàng chi tiết" 
+                    placeholder="Địa chỉ nhận hàng (Không bắt buộc)" 
                     className="w-full pl-14 pr-6 py-5 bg-soft-bg/50 rounded-2xl focus:bg-white focus:shadow-clay-sm transition-all font-heading font-bold placeholder:text-pastel-pink text-text-main outline-none min-h-[120px]"
                     value={shippingInfo.address}
                     onChange={(e) => setShippingInfo({...shippingInfo, address: e.target.value})}
