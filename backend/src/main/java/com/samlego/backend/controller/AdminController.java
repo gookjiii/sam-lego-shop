@@ -48,7 +48,8 @@ public class AdminController {
                 productRepository.saveAll(products);
                 return ResponseEntity.ok("Uploaded the file successfully: " + file.getOriginalFilename());
             } catch (Exception e) {
-                return ResponseEntity.status(HttpStatus.EXPECTATION_FAILED).body("Could not upload the file: " + file.getOriginalFilename() + "!");
+                String message = "Could not upload the file: " + file.getOriginalFilename() + "! Error: " + e.getMessage();
+                return ResponseEntity.status(HttpStatus.EXPECTATION_FAILED).body(message);
             }
         }
         return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Please upload an excel file!");
@@ -69,6 +70,8 @@ public class AdminController {
         product.setProductCode(productDetails.getProductCode());
         product.setDescription(productDetails.getDescription());
         product.setPrice(productDetails.getPrice());
+        product.setPreAssembledPrice(productDetails.getPreAssembledPrice());
+        product.setPreAssembledWithFlowerPrice(productDetails.getPreAssembledWithFlowerPrice());
         product.setStockQuantity(productDetails.getStockQuantity());
         product.setImageUrl(productDetails.getImageUrl());
         
@@ -124,10 +127,18 @@ public class AdminController {
     @PutMapping("/orders/{id}/status")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<?> updateOrderStatus(@PathVariable Long id, @RequestParam Order.OrderStatus status) {
+        System.out.println("Updating order status for ID: " + id + " to: " + status);
         Order order = orderRepository.findById(id).orElseThrow();
         order.setStatus(status);
         orderRepository.save(order);
         return ResponseEntity.ok("Order status updated to " + status);
+    }
+
+    @DeleteMapping("/orders/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<?> deleteOrder(@PathVariable Long id) {
+        orderRepository.deleteById(id);
+        return ResponseEntity.ok("Order deleted successfully!");
     }
 
     @GetMapping("/stats")

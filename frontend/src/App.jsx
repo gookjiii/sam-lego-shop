@@ -34,9 +34,9 @@ const App = () => {
     }
   }, [currentScreen, isAdmin]);
 
-  const handleAddToCart = () => {
+  const handleAddToCart = (productToCart) => {
     setIsAdding(true);
-    addToCart(selectedProduct);
+    addToCart(productToCart || selectedProduct);
     setTimeout(() => {
       setIsAdding(false);
     }, 800);
