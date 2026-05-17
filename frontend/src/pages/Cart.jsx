@@ -6,7 +6,7 @@ const Cart = ({ onBack, onCheckout }) => {
   const { cartItems, updateQuantity, removeFromCart, cartTotal } = useCart();
 
   const formatPrice = (price) => {
-    return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(price);
+    return new Intl.NumberFormat('vi-VN').format(price) + ' VND';
   };
 
   if (cartItems.length === 0) {
@@ -49,12 +49,18 @@ const Cart = ({ onBack, onCheckout }) => {
 
                 <div className="flex-1 min-w-0">
                   <h4 className="font-heading font-bold text-sm md:text-xl mb-1 truncate text-text-heading group-hover:text-hot-pink transition-colors">{item.name}</h4>
+                  {item.selectedOption && (
+                    <p className="text-[10px] md:text-xs font-heading font-bold text-hot-pink/70 mb-1 flex items-center gap-1">
+                      <span className="w-1 h-1 bg-hot-pink rounded-full"></span>
+                      Dịch vụ: {item.selectedOption}
+                    </p>
+                  )}
                   <p className="text-hot-pink font-heading font-black text-lg md:text-2xl drop-shadow-sm">{item.price}</p>
                 </div>
 
                 <div className="flex flex-col items-end justify-between self-stretch py-1">
                   <button
-                    onClick={() => removeFromCart(item.id)}
+                    onClick={() => removeFromCart(item.id, item.selectedOption)}
                     className="p-2 bg-soft-bg/50 rounded-full text-pastel-pink hover:text-white hover:bg-hot-pink transition-all shadow-sm"
                   >
                     <Trash2 size={20} strokeWidth={2} />
@@ -62,21 +68,20 @@ const Cart = ({ onBack, onCheckout }) => {
 
                   <div className="flex items-center bg-soft-bg/30 rounded-full p-1 border border-pastel-pink/10 shadow-inner mt-4">
                     <button
-                      onClick={() => updateQuantity(item.id, -1)}
+                      onClick={() => updateQuantity(item.id, -1, item.selectedOption)}
                       className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-white text-text-main shadow-clay-sm flex items-center justify-center hover:bg-hot-pink hover:text-white transition-all active:scale-90"
                     >
                       <Minus size={16} strokeWidth={3} />
                     </button>
                     <span className="w-10 md:w-14 text-center font-heading font-bold text-lg text-text-main">{item.quantity}</span>
                     <button
-                      onClick={() => updateQuantity(item.id, 1)}
+                      onClick={() => updateQuantity(item.id, 1, item.selectedOption)}
                       className="w-8 h-8 md:w-10 md:h-10 rounded-full bg-hot-pink text-white shadow-clay-sm flex items-center justify-center hover:bg-text-main transition-all active:scale-90"
                     >
                       <Plus size={16} strokeWidth={3} />
                     </button>
                   </div>
-                </div>
-              </div>
+                </div>              </div>
             ))}
           </div>
 

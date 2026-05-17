@@ -14,7 +14,7 @@ const Checkout = ({ onBack, onOrderSuccess }) => {
     address: ''
   });
   const [storeInfo, setStoreInfo] = useState(null);
-  const [orderComplete, setOrderComplete] = useState(false);
+  const [orderComplete, setOrderComplete] = useState(null);
 
   useEffect(() => {
     fetchProfile();
@@ -58,12 +58,13 @@ const Checkout = ({ onBack, onOrderSuccess }) => {
         items: cartItems.map(item => ({
           product: { id: item.id },
           quantity: item.quantity,
-          price: parseFloat(item.price.toString().replace(/[^\d]/g, ''))
+          price: parseFloat(item.price.toString().replace(/[^\d]/g, '')),
+          serviceOption: item.selectedOption || 'Fullbox'
         }))
       };
 
-      await createOrder(orderData);
-      setOrderComplete(true);
+      const createdOrder = await createOrder(orderData);
+      setOrderComplete(createdOrder);
       clearCart();
     } catch (err) {
       alert("Đặt hàng thất bại. Vui lòng thử lại!");
@@ -71,19 +72,61 @@ const Checkout = ({ onBack, onOrderSuccess }) => {
     setLoading(false);
   };
 
-  const formatVND = (value) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value);
+  const formatVND = (value) => new Intl.NumberFormat('vi-VN').format(value) + ' VND';
 
   if (orderComplete) {
+    const isQR = orderComplete.paymentMethod === 'QR';
+    const qrUrl = isQR ? `https://qr.sepay.vn/img?acc=${storeInfo?.accountNumber}&bank=${storeInfo?.bankName}&amount=${orderComplete.totalAmount}&des=SAMLEGO${orderComplete.id}` : '';
+
     return (
-      <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center animate-in zoom-in-95 duration-500 bg-soft-bg">
-        <div className="w-32 h-32 bg-white rounded-clay shadow-clay-md flex items-center justify-center mb-8 rotate-6 border-4 border-white">
-          <CheckCircle size={80} strokeWidth={2} className="text-green-400" />
+      <div className="min-h-screen flex flex-col items-center justify-center p-6 text-center animate-in zoom-in-95 duration-500 bg-soft-bg overflow-y-auto py-20">
+        <div className="w-24 h-24 md:w-32 md:h-32 bg-white rounded-clay shadow-clay-md flex items-center justify-center mb-6 rotate-6 border-4 border-white">
+          <CheckCircle size={60} md:size={80} strokeWidth={2} className="text-green-400" />
         </div>
-        <h2 className="text-4xl md:text-6xl font-heading font-bold mb-6 tracking-tighter text-text-heading">Thành công rồi!</h2>
-        <p className="text-text-main/50 mb-10 max-w-sm font-body text-lg font-bold italic">Cảm ơn bạn đã tin tưởng SamLego. Đơn hàng đang được xử lý!</p>
+        <h2 className="text-3xl md:text-5xl font-heading font-bold mb-4 tracking-tighter text-text-heading">Đặt hàng thành công!</h2>
+        <p className="text-text-main/50 mb-8 max-w-sm font-body text-sm md:text-lg font-bold italic">Mã đơn hàng: <span className="text-hot-pink">#{orderComplete.id}</span></p>
+        
+        {isQR && (
+          <div className="bg-white p-6 md:p-8 rounded-[32px] md:rounded-[40px] shadow-clay-lg border-4 border-white max-w-md w-full mb-10 animate-in slide-in-from-bottom-8 duration-700">
+            <h4 className="font-heading font-bold text-text-heading mb-6 flex items-center justify-center gap-2">
+              <QrCode size={20} className="text-hot-pink" /> Quét mã để thanh toán
+            </h4>
+            
+            <div className="bg-soft-bg/50 p-4 rounded-2xl mb-6 relative group">
+              <img 
+                src={qrUrl} 
+                alt="QR Thanh toán" 
+                className="w-full aspect-square object-contain rounded-xl shadow-clay-sm"
+              />
+              <div className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity bg-white/10 backdrop-blur-[2px] rounded-xl">
+                 <button onClick={() => window.open(qrUrl, '_blank')} className="bg-white px-4 py-2 rounded-full font-bold text-[10px] shadow-clay-md border border-pastel-pink/20">Mở ảnh lớn</button>
+              </div>
+            </div>
+
+            <div className="space-y-3 text-left">
+              <div className="bg-soft-bg/30 p-3 rounded-xl border border-pastel-pink/10">
+                <p className="text-[10px] text-pastel-pink font-bold uppercase mb-1">Số tiền cần chuyển:</p>
+                <p className="text-xl font-black text-hot-pink">{formatVND(orderComplete.totalAmount)}</p>
+              </div>
+              <div className="bg-soft-bg/30 p-3 rounded-xl border border-pastel-pink/10">
+                <p className="text-[10px] text-pastel-pink font-bold uppercase mb-1">Nội dung chuyển khoản:</p>
+                <p className="text-lg font-black text-text-heading">SAMLEGO{orderComplete.id}</p>
+              </div>
+            </div>
+            
+            <p className="mt-6 text-[10px] text-text-main/40 font-bold italic leading-relaxed">
+              * Shop sẽ liên hệ với bạn sau khi xác nhận, hãy đợi nhé!
+            </p>
+          </div>
+        )}
+
+        {!isQR && (
+          <p className="text-text-main/50 mb-10 max-w-sm font-body text-base font-bold italic">Cảm ơn bạn đã tin tưởng SamLego. Đơn hàng của bạn sẽ sớm được giao!</p>
+        )}
+
         <button 
           onClick={onOrderSuccess}
-          className="clay-btn bg-hot-pink text-white text-xl px-12"
+          className="clay-btn bg-hot-pink text-white text-lg md:text-xl px-12 py-4 shadow-clay-lg hover:bg-text-heading transition-all"
         >
           Quay lại trang chủ
         </button>
@@ -170,37 +213,29 @@ const Checkout = ({ onBack, onOrderSuccess }) => {
 
               {paymentMethod === 'QR' && (
                 <div className="mt-8 p-6 md:p-8 bg-soft-bg/30 rounded-clay border-2 border-dashed border-pastel-pink/30 flex flex-col items-center animate-in fade-in zoom-in-95 duration-300">
-                  <div className="bg-white p-4 rounded-2xl shadow-clay-md mb-6 rotate-1">
-                    <img 
-                      src={storeInfo?.qrCodeUrl || `https://api.qrserver.com/v1/create-qr-code/?size=200x200&data=STB|SamLego|${cartTotal}|Order`} 
-                      alt="Banking QR" 
-                      className="w-48 h-48 md:w-64 md:h-64 object-contain"
-                    />
+                  <div className="bg-white p-6 rounded-2xl shadow-clay-md mb-6 rotate-1 flex flex-col items-center text-center">
+                    <QrCode size={80} className="text-pastel-pink mb-4" />
+                    <p className="font-heading font-bold text-text-heading text-sm uppercase">Mã QR Thanh toán</p>
+                    <p className="text-[10px] text-pastel-pink font-bold mt-1">Sẽ được tạo tự động sau khi bạn xác nhận đơn hàng</p>
                   </div>
                   
                   <div className="w-full space-y-4">
                     <div className="bg-white/80 p-4 rounded-2xl shadow-clay-sm border border-pastel-pink/10">
-                      <p className="text-[10px] text-pastel-pink font-bold uppercase mb-2 text-center">THÔNG TIN CHUYỂN KHOẢN</p>
-                      <div className="space-y-2">
-                        <div className="flex justify-between items-center text-xs md:text-sm">
-                          <span className="text-text-main/60 uppercase font-bold">Ngân hàng:</span>
-                          <span className="text-text-heading font-black">{storeInfo?.bankName || 'Đang cập nhật...'}</span>
+                      <p className="text-[10px] text-pastel-pink font-bold uppercase mb-2 text-center">HƯỚNG DẪN THANH TOÁN</p>
+                      <div className="space-y-3">
+                        <div className="flex gap-3 text-xs md:text-sm">
+                          <span className="w-5 h-5 bg-hot-pink text-white rounded-full flex items-center justify-center font-bold flex-shrink-0 text-[10px]">1</span>
+                          <span className="text-text-main/70 font-bold italic">Bấm "Xác nhận đặt hàng" bên dưới</span>
                         </div>
-                        <div className="flex justify-between items-center text-xs md:text-sm">
-                          <span className="text-text-main/60 uppercase font-bold">Số tài khoản:</span>
-                          <span className="text-hot-pink font-black text-lg">{storeInfo?.accountNumber || 'Đang cập nhật...'}</span>
+                        <div className="flex gap-3 text-xs md:text-sm">
+                          <span className="w-5 h-5 bg-hot-pink text-white rounded-full flex items-center justify-center font-bold flex-shrink-0 text-[10px]">2</span>
+                          <span className="text-text-main/70 font-bold italic">Quét mã QR xuất hiện ở màn hình tiếp theo</span>
                         </div>
-                        <div className="flex justify-between items-center text-xs md:text-sm">
-                          <span className="text-text-main/60 uppercase font-bold">Chủ tài khoản:</span>
-                          <span className="text-text-heading font-black">{storeInfo?.accountHolderName || 'Đang cập nhật...'}</span>
+                        <div className="flex gap-3 text-xs md:text-sm">
+                          <span className="w-5 h-5 bg-hot-pink text-white rounded-full flex items-center justify-center font-bold flex-shrink-0 text-[10px]">3</span>
+                          <span className="text-text-main/70 font-bold italic">Hệ thống sẽ tự động duyệt đơn hàng của bạn</span>
                         </div>
                       </div>
-                    </div>
-
-                    <div className="text-center bg-hot-pink/10 p-4 rounded-2xl border border-hot-pink/20">
-                      <p className="text-[10px] text-hot-pink font-bold uppercase mb-1">NỘI DUNG CHUYỂN KHOẢN:</p>
-                      <p className="text-lg font-black text-hot-pink">SAMLEGO {Math.floor(Math.random() * 10000)}</p>
-                      <p className="text-[9px] text-text-main/40 mt-1 italic">(Vui lòng ghi đúng nội dung để đơn hàng được duyệt nhanh nhất)</p>
                     </div>
                   </div>
                 </div>
@@ -223,6 +258,9 @@ const Checkout = ({ onBack, onOrderSuccess }) => {
                     </div>
                     <div className="flex-1 min-w-0">
                       <p className="font-heading font-bold text-sm text-text-heading truncate uppercase">{item.name}</p>
+                      {item.selectedOption && (
+                        <p className="text-[10px] text-hot-pink font-bold mt-0.5">Dịch vụ: {item.selectedOption}</p>
+                      )}
                       <p className="text-xs text-text-main/40 font-bold mt-1 tracking-tighter">Số lượng: {item.quantity}</p>
                       <p className="font-heading font-black text-hot-pink text-lg mt-1">{formatVND(parseFloat(item.price.toString().replace(/[^\d]/g, '')) * item.quantity)}</p>
                     </div>

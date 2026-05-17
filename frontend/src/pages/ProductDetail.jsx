@@ -4,6 +4,16 @@ import { ChevronLeft, Heart, Star, Clock, Calendar, ShoppingBag } from 'lucide-r
 const ProductDetail = ({ product, onBack, onAddToCart, isAdding }) => {
   if (!product) return null;
 
+  const [selectedServiceOption, setSelectedServiceOption] = React.useState('Fullbox');
+  const serviceOptions = [
+    { id: 'Fullbox', label: 'Fullbox', price: 0 },
+    { id: 'Pre-assembled', label: 'Đã lắp sẵn', price: product.preAssembledPrice || 70000 },
+    { id: 'Pre-assembled + Flower', label: 'Đã lắp sẵn + gói hoa', price: product.preAssembledWithFlowerPrice || 100000 },
+  ];
+
+  const currentOption = serviceOptions.find(opt => opt.id === selectedServiceOption);
+  const totalPrice = product.price + (currentOption ? currentOption.price : 0);
+
   const images = product.imageUrl ? product.imageUrl.split(',').map(img => img.trim()) : [];
   const [mainImage, setMainImage] = React.useState(images[0] || '');
 
@@ -76,7 +86,37 @@ const ProductDetail = ({ product, onBack, onAddToCart, isAdding }) => {
             </div>
 
             <div className="mb-8 p-6 bg-white rounded-clay shadow-clay-md inline-block border-2 border-pastel-pink/20 -rotate-1">
-              <p className="text-3xl md:text-5xl font-heading font-black text-hot-pink">{product.price}</p>
+              <p className="text-3xl md:text-5xl font-heading font-black text-hot-pink">{new Intl.NumberFormat('vi-VN').format(totalPrice)} VND</p>
+            </div>
+
+            <div className="mb-10 space-y-4">
+              <h4 className="font-heading font-bold text-lg md:text-xl flex items-center gap-3 text-text-heading">
+                <span className="w-1.5 h-6 bg-hot-pink rounded-full"></span>
+                Tùy chọn sản phẩm
+              </h4>
+              <div className="grid grid-cols-1 gap-3">
+                {serviceOptions.map((option) => (
+                  <button
+                    key={option.id}
+                    onClick={() => setSelectedServiceOption(option.id)}
+                    className={`flex items-center justify-between p-4 rounded-2xl border-2 transition-all font-heading font-bold ${
+                      selectedServiceOption === option.id
+                        ? 'border-hot-pink bg-hot-pink/5 shadow-clay-sm scale-[1.02]'
+                        : 'border-white bg-white/50 hover:border-pastel-pink'
+                    }`}
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center ${selectedServiceOption === option.id ? 'border-hot-pink' : 'border-text-main/20'}`}>
+                        {selectedServiceOption === option.id && <div className="w-2.5 h-2.5 bg-hot-pink rounded-full"></div>}
+                      </div>
+                      <span className={selectedServiceOption === option.id ? 'text-text-heading' : 'text-text-main/60'}>{option.label}</span>
+                    </div>
+                    <span className={`text-sm ${selectedServiceOption === option.id ? 'text-hot-pink' : 'text-text-main/40'}`}>
+                      {option.price === 0 ? 'Mặc định' : `+ ${new Intl.NumberFormat('vi-VN').format(option.price)} VND`}
+                    </span>
+                  </button>
+                ))}
+              </div>
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-10">
@@ -86,7 +126,7 @@ const ProductDetail = ({ product, onBack, onAddToCart, isAdding }) => {
                 </div>
                 <div>
                   <p className="text-[10px] text-text-main/40 font-heading font-bold">Giao hàng</p>
-                  <p className="text-sm md:text-base font-bold tracking-tight text-text-heading">30 - 60 phút</p>
+                  <p className="text-sm md:text-base font-bold tracking-tight text-text-heading">Giao hàng tận nơi</p>
                 </div>
               </div>
               <div className="p-4 bg-white rounded-clay shadow-clay-sm flex items-center gap-4 border border-pastel-pink/10">
@@ -117,7 +157,13 @@ const ProductDetail = ({ product, onBack, onAddToCart, isAdding }) => {
                 <Heart size={32} strokeWidth={2.5} />
               </button>
               <button 
-                onClick={onAddToCart}
+                onClick={() => onAddToCart({ 
+                  ...product, 
+                  price: totalPrice, 
+                  selectedOption: currentOption?.label, 
+                  basePrice: product.price,
+                  optionPrice: currentOption?.price 
+                })}
                 disabled={isAdding}
                 className="flex-1 py-5 md:py-7 bg-hot-pink text-white rounded-clay shadow-clay-md font-heading font-bold text-xl md:text-2xl tracking-widest hover:bg-text-main transition-all flex items-center justify-center gap-4 relative active:scale-95"
               >

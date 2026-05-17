@@ -26,6 +26,8 @@ public class OrderItem {
     @Column(nullable = false)
     private BigDecimal price;
 
+    private String serviceOption;
+
     public OrderItem() {}
 
     public Long getId() { return id; }
@@ -42,4 +44,7 @@ public class OrderItem {
 
     public BigDecimal getPrice() { return price; }
     public void setPrice(BigDecimal price) { this.price = price; }
+
+    public String getServiceOption() { return serviceOption; }
+    public void setServiceOption(String serviceOption) { this.serviceOption = serviceOption; }
 }

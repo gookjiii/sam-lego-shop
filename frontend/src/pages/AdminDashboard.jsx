@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import { 
   Upload, Plus, FileText, CheckCircle, AlertCircle, Package, Search, 
   ChevronRight, BarChart3, List, Grid, X, LayoutDashboard, TrendingUp,
-  DollarSign, ShoppingCart, Users, Truck, Clock, Check, Edit2, Trash2
+  DollarSign, ShoppingCart, Users, User, Truck, Clock, Check, Edit2, Trash2
 } from 'lucide-react';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, 
@@ -12,7 +12,7 @@ import { getProducts, getCategories } from '../api/productService';
 import { 
   importProducts, addProduct, getAdminStats, addCategory, 
   getAllOrders, updateOrderStatus, updateProduct, deleteProduct,
-  updateCategory, deleteCategory
+  updateCategory, deleteCategory, deleteOrder
 } from '../api/adminService';
 
 const AdminDashboard = ({ activeTab, onBack }) => {
@@ -31,11 +31,17 @@ const AdminDashboard = ({ activeTab, onBack }) => {
   const [isEditingCategory, setIsEditingCategory] = useState(false);
   const [currentCategoryId, setCurrentCategoryId] = useState(null);
 
+  const [showContactModal, setShowContactModal] = useState(false);
+  const [selectedOrder, setSelectedOrder] = useState(null);
+  const [orderView, setOrderView] = useState('current');
+
   const initialProductState = {
     name: '',
     productCode: '',
     description: '',
     price: '',
+    preAssembledPrice: '',
+    preAssembledWithFlowerPrice: '',
     stockQuantity: '',
     imageUrl: '',
     category: { id: '' }
@@ -59,18 +65,18 @@ const AdminDashboard = ({ activeTab, onBack }) => {
     try {
       if (activeTab === 'products') {
         const p = await getProducts();
-        setProducts(p);
+        setProducts(p || []);
         const c = await getCategories();
-        setCategories(c);
+        setCategories(c || []);
       } else if (activeTab === 'categories') {
         const c = await getCategories();
-        setCategories(c);
+        setCategories(c || []);
       } else if (activeTab === 'stats') {
         const s = await getAdminStats();
         setStats(s);
       } else if (activeTab === 'orders') {
         const o = await getAllOrders();
-        setOrders(o);
+        setOrders(o || []);
       }
     } catch (err) {
       console.error("Failed to fetch data", err);
@@ -84,7 +90,22 @@ const AdminDashboard = ({ activeTab, onBack }) => {
       setMessage({ type: 'success', text: `Cập nhật trạng thái đơn hàng #${orderId} thành công!` });
       fetchData();
     } catch (err) {
+      console.error("Order status update failed:", err);
+      let errorDetail = err.response?.data?.message || err.response?.data || err.message;
+      if (typeof errorDetail === 'object') errorDetail = JSON.stringify(errorDetail);
+      alert(`Lỗi khi cập nhật trạng thái đơn hàng (Mã ${err.response?.status || '??'}): ${errorDetail}`);
       setMessage({ type: 'error', text: 'Lỗi khi cập nhật trạng thái đơn hàng.' });
+    }
+  };
+
+  const handleDeleteOrder = async (orderId) => {
+    if (!window.confirm("Bạn có chắc chắn muốn xóa vĩnh viễn đơn hàng này khỏi Database?")) return;
+    try {
+      await deleteOrder(orderId);
+      setMessage({ type: 'success', text: 'Đã xóa đơn hàng thành công!' });
+      fetchData();
+    } catch (err) {
+      setMessage({ type: 'error', text: 'Lỗi khi xóa đơn hàng.' });
     }
   };
 
@@ -95,7 +116,12 @@ const AdminDashboard = ({ activeTab, onBack }) => {
     { value: 'SHIPPING', label: 'Đang giao hàng', color: 'bg-orange-50 text-orange-600 border-orange-100' },
     { value: 'DELIVERED', label: 'Đã giao hàng', color: 'bg-green-50 text-green-600 border-green-100' },
     { value: 'CANCELLED', label: 'Đã hủy', color: 'bg-red-50 text-red-600 border-red-100' },
+    { value: 'ARCHIVED', label: 'Đã lưu trữ', color: 'bg-gray-50 text-gray-600 border-gray-100' },
   ];
+
+  const currentOrders = orders.filter(order => order.status !== 'ARCHIVED');
+  const archivedOrders = orders.filter(order => order.status === 'ARCHIVED');
+  const visibleOrders = orderView === 'archived' ? archivedOrders : currentOrders;
 
   const handleImport = async (e) => {
     const file = e.target.files[0];
@@ -106,7 +132,8 @@ const AdminDashboard = ({ activeTab, onBack }) => {
       setMessage({ type: 'success', text: 'Nhập dữ liệu Excel thành công!' });
       fetchData();
     } catch (err) {
-      setMessage({ type: 'error', text: 'Lỗi khi nhập file Excel.' });
+      const errorMsg = err.response?.data || 'Lỗi khi nhập file Excel.';
+      setMessage({ type: 'error', text: typeof errorMsg === 'string' ? errorMsg : 'Lỗi khi nhập file Excel.' });
     }
     setLoading(false);
   };
@@ -124,6 +151,8 @@ const AdminDashboard = ({ activeTab, onBack }) => {
         productCode: newProduct.productCode,
         description: newProduct.description,
         price: parseFloat(newProduct.price),
+        preAssembledPrice: parseFloat(newProduct.preAssembledPrice || 0),
+        preAssembledWithFlowerPrice: parseFloat(newProduct.preAssembledWithFlowerPrice || 0),
         stockQuantity: parseInt(newProduct.stockQuantity),
         imageUrl: newProduct.imageUrl,
         category: { id: parseInt(newProduct.category.id) }
@@ -164,6 +193,8 @@ const AdminDashboard = ({ activeTab, onBack }) => {
       productCode: product.productCode || '',
       description: product.description,
       price: product.price,
+      preAssembledPrice: product.preAssembledPrice || '',
+      preAssembledWithFlowerPrice: product.preAssembledWithFlowerPrice || '',
       stockQuantity: product.stockQuantity,
       imageUrl: product.imageUrl,
       category: { id: product.category?.id || '' }
@@ -214,7 +245,7 @@ const AdminDashboard = ({ activeTab, onBack }) => {
     setShowCategoryModal(true);
   };
 
-  const formatVND = (value) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value);
+  const formatVND = (value) => new Intl.NumberFormat('vi-VN').format(value) + ' VND';
 
   return (
     <div className="min-h-screen bg-soft-bg flex flex-col">
@@ -304,15 +335,36 @@ const AdminDashboard = ({ activeTab, onBack }) => {
 
           {activeTab === 'orders' && (
             <div className="animate-in fade-in duration-500">
-              <div className="flex justify-between items-center mb-6 md:mb-8">
+              <div className="flex justify-between items-center mb-4 md:mb-6">
                 <h3 className="text-xl md:text-2xl font-black text-text-heading">Quản lý <span className="text-hot-pink">đơn hàng</span></h3>
-                <div className="text-[10px] md:text-sm font-bold text-pastel-pink">{orders.length} đơn hàng</div>
+                <div className="text-[10px] md:text-sm font-bold text-pastel-pink">{visibleOrders.length} đơn hàng</div>
+              </div>
+
+              <div className="mb-6 md:mb-8 inline-flex w-full sm:w-auto rounded-2xl bg-white p-1.5 shadow-clay-sm border-2 border-white">
+                <button
+                  type="button"
+                  onClick={() => setOrderView('current')}
+                  className={`flex-1 sm:flex-none px-4 md:px-6 py-2.5 rounded-xl text-xs md:text-sm font-heading font-bold transition-all ${
+                    orderView === 'current' ? 'bg-hot-pink text-white shadow-clay-sm' : 'text-text-main hover:bg-soft-bg/60'
+                  }`}
+                >
+                  Hiện tại ({currentOrders.length})
+                </button>
+                <button
+                  type="button"
+                  onClick={() => setOrderView('archived')}
+                  className={`flex-1 sm:flex-none px-4 md:px-6 py-2.5 rounded-xl text-xs md:text-sm font-heading font-bold transition-all ${
+                    orderView === 'archived' ? 'bg-hot-pink text-white shadow-clay-sm' : 'text-text-main hover:bg-soft-bg/60'
+                  }`}
+                >
+                  Lưu trữ ({archivedOrders.length})
+                </button>
               </div>
 
               {/* Mobile View: Cards */}
               <div className="block md:hidden space-y-4">
-                {orders.map(order => (
-                  <div key={order.id} className="bg-white p-5 rounded-clay shadow-clay-sm border-2 border-white space-y-4">
+                {visibleOrders.map(order => (
+                  <div key={order.id} className="bg-white p-5 rounded-clay shadow-clay-sm border-2 border-white space-y-4 relative group">
                     <div className="flex justify-between items-start">
                       <div>
                         <p className="font-black text-text-heading">#{order.id}</p>
@@ -330,8 +382,17 @@ const AdminDashboard = ({ activeTab, onBack }) => {
                     </div>
                     <div className="flex justify-between items-center pt-2 border-t border-dashed border-pastel-pink/10">
                       <p className="font-black text-hot-pink">{formatVND(order.totalAmount)}</p>
-                      <select 
-                        className="bg-soft-bg/50 border border-white rounded-xl px-3 py-2 text-[10px] font-bold focus:outline-none shadow-inner"
+                      <div className="flex gap-2">
+                         <button onClick={() => { setSelectedOrder(order); setShowContactModal(true); }} className="p-2 bg-pastel-pink/20 text-hot-pink rounded-xl shadow-sm"><FileText size={16} /></button>
+                         {order.status !== 'ARCHIVED' && (
+                           <button onClick={() => handleUpdateOrderStatus(order.id, 'ARCHIVED')} className="p-2 bg-gray-50 text-gray-400 rounded-xl shadow-sm"><Package size={16} /></button>
+                         )}
+                         <button onClick={() => handleDeleteOrder(order.id)} className="p-2 bg-red-50 text-red-400 rounded-xl shadow-sm"><Trash2 size={16} /></button>
+                      </div>
+                    </div>
+                    <div className="pt-2">
+                       <select 
+                        className="w-full bg-soft-bg/50 border border-white rounded-xl px-3 py-2 text-[10px] font-bold focus:outline-none shadow-inner"
                         value={order.status}
                         onChange={(e) => handleUpdateOrderStatus(order.id, e.target.value)}
                       >
@@ -352,37 +413,28 @@ const AdminDashboard = ({ activeTab, onBack }) => {
                       <tr className="bg-soft-bg/50">
                         <th className="px-8 py-5 text-xs font-bold text-pastel-pink tracking-widest uppercase">Đơn hàng</th>
                         <th className="px-8 py-5 text-xs font-bold text-pastel-pink tracking-widest uppercase">Khách hàng</th>
-                        <th className="px-8 py-5 text-xs font-bold text-pastel-pink tracking-widest uppercase">Ngày đặt</th>
                         <th className="px-8 py-5 text-xs font-bold text-pastel-pink tracking-widest uppercase">Tổng tiền</th>
                         <th className="px-8 py-5 text-xs font-bold text-pastel-pink tracking-widest uppercase">Trạng thái</th>
-                        <th className="px-8 py-5 text-xs font-bold text-pastel-pink tracking-widest uppercase">Hành động</th>
+                        <th className="px-8 py-5 text-xs font-bold text-pastel-pink tracking-widest uppercase text-right">Hành động</th>
                       </tr>
                     </thead>
                     <tbody className="divide-y divide-pastel-pink/10">
-                      {orders.map(order => (
-                        <tr key={order.id} className="hover:bg-soft-bg/30 transition-colors">
-                          <td className="px-8 py-5 font-bold text-text-heading">#{order.id}</td>
+                      {visibleOrders.map(order => (
+                        <tr key={order.id} className="hover:bg-soft-bg/30 transition-colors group">
+                          <td className="px-8 py-5">
+                            <p className="font-bold text-text-heading">#{order.id}</p>
+                            <p className="text-[10px] text-text-main/40 font-bold">{new Date(order.createdAt).toLocaleDateString('vi-VN')}</p>
+                          </td>
                           <td className="px-8 py-5">
                             <p className="font-bold text-sm text-text-main">{order.user?.fullName || order.user?.username}</p>
                             <p className="text-xs text-pastel-pink font-medium">{order.user?.phone || 'N/A'}</p>
                           </td>
-                          <td className="px-8 py-5">
-                            <div className="flex items-center gap-2 text-text-main/60 text-sm font-medium">
-                              <Clock size={14} />
-                              {new Date(order.createdAt).toLocaleDateString('vi-VN')}
-                            </div>
-                          </td>
                           <td className="px-8 py-5 font-bold text-text-heading">{formatVND(order.totalAmount)}</td>
                           <td className="px-8 py-5">
-                            <span className={`px-3 py-1 rounded-full text-xs font-bold tracking-wider border ${
-                              orderStatuses.find(s => s.value === order.status)?.color || ''
-                            }`}>
-                              {orderStatuses.find(s => s.value === order.status)?.label || order.status}
-                            </span>
-                          </td>
-                          <td className="px-8 py-5">
                             <select 
-                              className="bg-soft-bg/50 border border-white rounded-xl px-3 py-2 text-xs font-bold focus:outline-none shadow-inner"
+                              className={`bg-white border-2 rounded-xl px-3 py-2 text-xs font-bold focus:outline-none shadow-clay-sm ${
+                                orderStatuses.find(s => s.value === order.status)?.color || ''
+                              }`}
                               value={order.status}
                               onChange={(e) => handleUpdateOrderStatus(order.id, e.target.value)}
                             >
@@ -391,6 +443,15 @@ const AdminDashboard = ({ activeTab, onBack }) => {
                               ))}
                             </select>
                           </td>
+                          <td className="px-8 py-5 text-right">
+                             <div className="flex justify-end gap-2">
+                                <button onClick={() => { setSelectedOrder(order); setShowContactModal(true); }} className="p-2 bg-pastel-pink/10 text-hot-pink rounded-xl shadow-clay-sm hover:bg-hot-pink hover:text-white transition-all" title="Xem chi tiết đơn hàng"><FileText size={18} /></button>
+                                {order.status !== 'ARCHIVED' && (
+                                  <button onClick={() => handleUpdateOrderStatus(order.id, 'ARCHIVED')} className="p-2 bg-gray-50 text-gray-400 rounded-xl shadow-clay-sm hover:bg-gray-400 hover:text-white transition-all" title="Lưu trữ"><Package size={18} /></button>
+                                )}
+                                <button onClick={() => handleDeleteOrder(order.id)} className="p-2 bg-red-50 text-red-400 rounded-xl shadow-clay-sm hover:bg-red-400 hover:text-white transition-all" title="Xóa đơn hàng"><Trash2 size={18} /></button>
+                             </div>
+                          </td>
                         </tr>
                       ))}
                     </tbody>
@@ -398,10 +459,10 @@ const AdminDashboard = ({ activeTab, onBack }) => {
                 </div>
               </div>
               
-              {orders.length === 0 && (
+              {visibleOrders.length === 0 && (
                 <div className="px-8 py-20 text-center text-pastel-pink bg-white/50 rounded-[40px] border-2 border-dashed border-pastel-pink mt-6">
                   <ShoppingCart size={48} className="mx-auto mb-4 opacity-20" />
-                  <p className="font-bold">Chưa có đơn hàng nào được đặt</p>
+                  <p className="font-bold">{orderView === 'archived' ? 'Chưa có đơn hàng lưu trữ' : 'Chưa có đơn hàng hiện tại'}</p>
                 </div>
               )}
             </div>
@@ -412,11 +473,24 @@ const AdminDashboard = ({ activeTab, onBack }) => {
               <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6 md:mb-8">
                 <h3 className="text-xl md:text-2xl font-black text-text-heading">Danh sách <span className="text-hot-pink">sản phẩm</span></h3>
                 <div className="flex gap-2 w-full sm:w-auto">
-                  <div className="relative flex-1 sm:flex-initial">
+                  <div className="relative flex-1 sm:flex-initial group">
                     <button className="w-full px-4 md:px-6 py-2.5 md:py-3 bg-pastel-pink text-text-main rounded-2xl font-bold flex items-center justify-center gap-2 shadow-clay-sm overflow-hidden relative hover:bg-hot-pink hover:text-white transition-all text-xs md:text-sm">
                       <Upload size={16} /> Nhập Excel
                       <input type="file" accept=".xlsx" onChange={handleImport} className="absolute inset-0 opacity-0 cursor-pointer" />
                     </button>
+                    {/* Format Hint */}
+                    <div className="absolute bottom-full mb-2 left-1/2 -translate-x-1/2 bg-text-heading text-white text-[10px] p-3 rounded-xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none w-64 shadow-xl z-50">
+                      <p className="font-bold mb-1 border-b border-white/20 pb-1">Định dạng file .xlsx:</p>
+                      <ul className="space-y-0.5 list-disc list-inside opacity-80">
+                        <li>Cột A: Tên sản phẩm</li>
+                        <li>Cột B: Mã (Unique)</li>
+                        <li>Cột C: Mô tả</li>
+                        <li>Cột D: Giá (Số)</li>
+                        <li>Cột E: Kho (Số)</li>
+                        <li>Cột F: Link ảnh</li>
+                        <li>Cột G: ID danh mục (Số)</li>
+                      </ul>
+                    </div>
                   </div>
                   <button onClick={() => { setIsEditingProduct(false); setNewProduct(initialProductState); setShowProductModal(true); }} className="flex-1 sm:flex-initial px-4 md:px-6 py-2.5 md:py-3 bg-hot-pink text-white rounded-2xl font-bold flex items-center justify-center gap-2 shadow-clay-sm hover:bg-text-heading transition-all text-xs md:text-sm">
                     <Plus size={16} /> Thêm mới
@@ -497,7 +571,10 @@ const AdminDashboard = ({ activeTab, onBack }) => {
                   <div key={cat.id} className="bg-white p-4 md:p-6 rounded-clay border-2 border-white shadow-clay-sm flex items-center gap-4 group relative hover:shadow-clay-md transition-all">
                     <img src={cat.imageUrl} className="w-12 h-12 md:w-16 md:h-16 rounded-2xl object-cover border-2 border-white shadow-inner flex-shrink-0" alt="" />
                     <div className="flex-1 min-w-0">
-                      <h5 className="font-bold text-text-heading text-sm md:text-base truncate">{cat.name}</h5>
+                      <div className="flex items-center gap-2">
+                        <span className="bg-soft-bg text-hot-pink text-[10px] font-black px-2 py-0.5 rounded-lg border border-pastel-pink/20">ID: {cat.id}</span>
+                        <h5 className="font-bold text-text-heading text-sm md:text-base truncate">{cat.name}</h5>
+                      </div>
                       <p className="text-[10px] md:text-xs text-pastel-pink font-medium line-clamp-1">{cat.description}</p>
                     </div>
                     <div className="absolute top-2 right-2 md:top-4 md:right-4 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
@@ -525,9 +602,19 @@ const AdminDashboard = ({ activeTab, onBack }) => {
                 <input type="number" placeholder="Giá" required className="w-full px-5 md:px-6 py-3 md:py-4 bg-soft-bg/50 border border-white rounded-2xl focus:outline-none font-bold text-text-main shadow-inner text-sm md:text-base" value={newProduct.price} onChange={e => setNewProduct({...newProduct, price: e.target.value})} />
                 <input type="number" placeholder="Kho" required className="w-full px-5 md:px-6 py-3 md:py-4 bg-soft-bg/50 border border-white rounded-2xl focus:outline-none font-bold text-text-main shadow-inner text-sm md:text-base" value={newProduct.stockQuantity} onChange={e => setNewProduct({...newProduct, stockQuantity: e.target.value})} />
               </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <p className="text-[10px] font-black text-hot-pink ml-2">Giá lắp sẵn (+)</p>
+                  <input type="number" placeholder="Giá lắp sẵn (+)" className="w-full px-5 md:px-6 py-3 md:py-4 bg-soft-bg/50 border border-white rounded-2xl focus:outline-none font-bold text-text-main shadow-inner text-sm md:text-base" value={newProduct.preAssembledPrice} onChange={e => setNewProduct({...newProduct, preAssembledPrice: e.target.value})} />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[10px] font-black text-hot-pink ml-2">Giá lắp + hoa (+)</p>
+                  <input type="number" placeholder="Giá lắp + hoa (+)" className="w-full px-5 md:px-6 py-3 md:py-4 bg-soft-bg/50 border border-white rounded-2xl focus:outline-none font-bold text-text-main shadow-inner text-sm md:text-base" value={newProduct.preAssembledWithFlowerPrice} onChange={e => setNewProduct({...newProduct, preAssembledWithFlowerPrice: e.target.value})} />
+                </div>
+              </div>
               <select className="w-full px-5 md:px-6 py-3 md:py-4 bg-soft-bg/50 border border-white rounded-2xl focus:outline-none font-bold text-text-main shadow-inner text-sm md:text-base" value={newProduct.category.id} onChange={e => setNewProduct({...newProduct, category: {id: e.target.value}})}>
                 <option value="">Chọn danh mục</option>
-                {categories.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
+                {categories.map(c => <option key={c.id} value={c.id}>{c.name} (ID: {c.id})</option>)}
               </select>
               <textarea placeholder="Mô tả" className="w-full px-5 md:px-6 py-3 md:py-4 bg-soft-bg/50 border border-white rounded-2xl focus:outline-none font-bold text-text-main shadow-inner min-h-[100px] text-sm md:text-base" value={newProduct.description} onChange={e => setNewProduct({...newProduct, description: e.target.value})} />
               <input type="text" placeholder="URL hình ảnh (cách nhau bằng dấu phẩy nếu có nhiều ảnh)" className="w-full px-5 md:px-6 py-3 md:py-4 bg-soft-bg/50 border border-white rounded-2xl focus:outline-none font-bold text-text-main shadow-inner text-sm md:text-base" value={newProduct.imageUrl} onChange={e => setNewProduct({...newProduct, imageUrl: e.target.value})} />
@@ -553,6 +640,67 @@ const AdminDashboard = ({ activeTab, onBack }) => {
                 {isEditingCategory ? 'Cập nhật ngay' : 'Lưu danh mục'}
               </button>
             </form>
+          </div>
+        </div>
+      )}
+
+      {/* Order Details Modal */}
+      {showContactModal && selectedOrder && (
+        <div className="fixed inset-0 z-[110] flex items-center justify-center p-4">
+          <div className="absolute inset-0 bg-text-heading/40 backdrop-blur-sm" onClick={() => setShowContactModal(false)}></div>
+          <div className="relative bg-white w-full max-w-xl rounded-[32px] md:rounded-[40px] p-6 md:p-10 shadow-clay-lg animate-in zoom-in-95 border-4 border-white overflow-y-auto max-h-[90vh] no-scrollbar">
+            <h3 className="text-xl md:text-2xl font-black mb-6 text-text-heading flex items-center gap-3">
+               <FileText className="text-hot-pink" /> Chi tiết đơn hàng #{selectedOrder.id}
+            </h3>
+            
+            <div className="space-y-6">
+               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                 <div className="bg-soft-bg/50 p-4 rounded-2xl border border-white shadow-inner">
+                    <p className="text-[10px] text-pastel-pink font-bold uppercase mb-1">Khách hàng:</p>
+                    <p className="font-black text-text-heading">{selectedOrder.user?.fullName || selectedOrder.user?.username || 'N/A'}</p>
+                 </div>
+                 <div className="bg-soft-bg/50 p-4 rounded-2xl border border-white shadow-inner">
+                    <p className="text-[10px] text-pastel-pink font-bold uppercase mb-1">Số điện thoại:</p>
+                    <p className="font-black text-hot-pink">{selectedOrder.user?.phone || 'Chưa cập nhật'}</p>
+                 </div>
+               </div>
+
+               <div className="bg-soft-bg/50 p-4 rounded-2xl border border-white shadow-inner">
+                  <p className="text-[10px] text-pastel-pink font-bold uppercase mb-1">Địa chỉ giao hàng:</p>
+                  <p className="font-bold text-text-main text-sm leading-relaxed">{selectedOrder.shippingAddress || 'Chưa có địa chỉ'}</p>
+               </div>
+
+               <div className="space-y-3">
+                 <p className="text-[10px] text-pastel-pink font-bold uppercase ml-2">Sản phẩm đã đặt:</p>
+                 <div className="bg-white rounded-2xl border-2 border-soft-bg overflow-hidden">
+                   {selectedOrder.items?.map((item, idx) => (
+                     <div key={idx} className="p-4 border-b border-soft-bg last:border-0 flex justify-between items-center gap-4">
+                       <div className="flex-1 min-w-0">
+                         <p className="font-bold text-sm text-text-heading truncate uppercase">{item.product?.name}</p>
+                         <div className="flex items-center gap-2 mt-1">
+                           <span className="text-[10px] bg-soft-bg px-2 py-0.5 rounded-full font-bold text-text-main/60">SL: {item.quantity}</span>
+                           {item.serviceOption && (
+                             <span className="text-[10px] bg-pastel-pink/20 text-hot-pink px-2 py-0.5 rounded-full font-bold italic">Dịch vụ: {item.serviceOption}</span>
+                           )}
+                         </div>
+                       </div>
+                       <p className="font-black text-text-heading text-sm">{formatVND(item.price * item.quantity)}</p>
+                     </div>
+                   ))}
+                   <div className="p-4 bg-soft-bg/30 flex justify-between items-center">
+                     <p className="font-bold text-sm text-text-main uppercase">Tổng cộng:</p>
+                     <p className="font-black text-hot-pink text-lg">{formatVND(selectedOrder.totalAmount)}</p>
+                   </div>
+                 </div>
+               </div>
+            </div>
+            
+            <button 
+              onClick={() => setShowContactModal(false)}
+              className="w-full mt-8 py-4 bg-text-heading text-white rounded-2xl font-black shadow-clay-sm hover:bg-hot-pink transition-all"
+            >
+              Đóng lại
+            </button>
           </div>
         </div>
       )}

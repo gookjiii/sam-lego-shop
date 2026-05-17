@@ -26,6 +26,9 @@ public class Product {
     @Column(nullable = false)
     private BigDecimal price;
 
+    private BigDecimal preAssembledPrice;
+    private BigDecimal preAssembledWithFlowerPrice;
+
     private Integer stockQuantity;
     @Column(length = 2000)
     private String imageUrl;
@@ -50,6 +53,12 @@ public class Product {
 
     public BigDecimal getPrice() { return price; }
     public void setPrice(BigDecimal price) { this.price = price; }
+
+    public BigDecimal getPreAssembledPrice() { return preAssembledPrice; }
+    public void setPreAssembledPrice(BigDecimal preAssembledPrice) { this.preAssembledPrice = preAssembledPrice; }
+
+    public BigDecimal getPreAssembledWithFlowerPrice() { return preAssembledWithFlowerPrice; }
+    public void setPreAssembledWithFlowerPrice(BigDecimal preAssembledWithFlowerPrice) { this.preAssembledWithFlowerPrice = preAssembledWithFlowerPrice; }
 
     public Integer getStockQuantity() { return stockQuantity; }
     public void setStockQuantity(Integer stockQuantity) { this.stockQuantity = stockQuantity; }
