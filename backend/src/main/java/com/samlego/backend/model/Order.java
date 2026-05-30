@@ -61,6 +61,6 @@ public class Order {
     public void setItems(List<OrderItem> items) { this.items = items; }
 
     public enum OrderStatus {
-        PENDING, PAID, PROCESSING, SHIPPING, DELIVERED, CANCELLED
+        PENDING, PAID, PROCESSING, SHIPPING, DELIVERED, CANCELLED, ARCHIVED
     }
 }
