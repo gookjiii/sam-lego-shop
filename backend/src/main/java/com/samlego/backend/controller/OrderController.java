@@ -4,6 +4,7 @@ import com.samlego.backend.model.Order;
 import com.samlego.backend.model.User;
 import com.samlego.backend.repository.OrderRepository;
 import com.samlego.backend.repository.UserRepository;
+import com.samlego.backend.service.OrderNotificationService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.*;
@@ -19,6 +20,9 @@ public class OrderController {
 
     @Autowired
     UserRepository userRepository;
+
+    @Autowired
+    OrderNotificationService orderNotificationService;
 
     @GetMapping
     public List<Order> getUserOrders(Authentication authentication) {
@@ -36,6 +40,9 @@ public class OrderController {
         if (order.getItems() != null) {
             order.getItems().forEach(item -> item.setOrder(order));
         }
-        return orderRepository.save(order);
+        Order savedOrder = orderRepository.save(order);
+        orderNotificationService.sendNewOrderEmail(savedOrder);
+        orderNotificationService.sendTelegramNotification(savedOrder);
+        return savedOrder;
     }
 }
